@@ -46,7 +46,7 @@ def create_tables():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         customer_id INTEGER NOT NULL,
         pickup_point_id INTEGER NOT NULL,
-        FOREIGN KEY (customer_id) REFERENCES users(user_id),
+        FOREIGN KEY (customer_id) REFERENCES users(user_tg_id),
         FOREIGN KEY (pickup_point_id) REFERENCES place(place_id)
     );
 
@@ -56,6 +56,7 @@ def create_tables():
         product_variant_id INTEGER NOT NULL,
         quantity INTEGER NOT NULL,
         item_price INTEGER NOT NULL,
+        ratio_name TEXT NOT NULL,
         FOREIGN KEY (cart_id) REFERENCES carts(id),
         FOREIGN KEY (product_variant_id) REFERENCES product_variants(id)
     );
@@ -75,7 +76,7 @@ def create_tables():
         total_price INTEGER NOT NULL,
         status TEXT NOT NULL,
         created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
-        FOREIGN KEY (customer_id) REFERENCES users(user_id),
+        FOREIGN KEY (customer_id) REFERENCES users(user_tg_id),
         FOREIGN KEY (pickup_point_id) REFERENCES place(place_id)
     );
 
@@ -86,6 +87,7 @@ def create_tables():
         variant_name TEXT NOT NULL,
         quantity INTEGER NOT NULL,
         item_price INTEGER NOT NULL,
+        ratio_name TEXT NOT NULL,
         FOREIGN KEY (order_id) REFERENCES orders(id)
     );
 
@@ -121,7 +123,7 @@ def products_in():
         VALUES (101, 'ЛЕНПОЛИГРАФМАШ', 'Санкт-Петербург, Аптекарский просп., 2'), (102, 'У КАРАНДАША', 'Санкт-Петербург, Большой Сампсониевский просп., 76');
 
         INSERT OR IGNORE INTO modifiers (id, name, price)
-        VALUES (1, 'Сироп карамель', 20), (2, 'Сироп ваниль', 30), (3, 'Сироп орех', 50), (4, 'Овсяное молоко', 50), (5, 'Миндальное молоко', 20), (6, 'Кокосовое молоко', 31);
+        VALUES (1001, 'Сироп карамель', 20), (1002, 'Сироп ваниль', 30), (1003, 'Сироп орех', 50), (1004, 'Овсяное молоко', 50), (1005, 'Миндальное молоко', 20), (1006, 'Кокосовое молоко', 31), (1007, 'Без добавок', 0);
                       
         INSERT OR IGNORE INTO product_variants (id, product_id, variant_name, price)
         VALUES 
@@ -172,18 +174,25 @@ def data_in(table_name, **data):
     return last_id
 
 
-def get_callback(table_name, back, id_name, **data):
+def get_callback(table_name, back, id_name, extra_back=None, extra_id_name=None, **data):
     conn = sqlite3.connect("userfile.db")
     conn.row_factory = sqlite3.Row 
-    
+
+    cur = conn.cursor()
+
     if data: 
         columns = list(data.keys())
         query = f"SELECT {','.join(columns)} FROM {table_name} WHERE {id_name} = ?"
-    else:   
-        query = f"SELECT * FROM {table_name} WHERE {id_name} = ?"
+        cur.execute(query, (back,))
+    else: 
+        if extra_back is not None and extra_id_name is not None:
+            query = f"SELECT * FROM {table_name} WHERE {id_name} = ? AND {extra_id_name} = ?"
+            cur.execute(query, (back, extra_back,))
+        else: 
+            query = f"SELECT * FROM {table_name} WHERE {id_name} = ?"
+            cur.execute(query, (back,))
+
     
-    cur = conn.cursor()
-    cur.execute(query, (back,))
     row = cur.fetchone()
     conn.close()
     

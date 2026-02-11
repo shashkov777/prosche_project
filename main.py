@@ -2,11 +2,14 @@ import telebot
 import db 
 from telebot import types 
 
-import sqlite3
+
 
 bot = telebot.TeleBot("8573939809:AAE-sW3ZzmUVpCPX-axSO6ryeoyQFWkXaEM")
 
-name = None
+name = None; pickup_point_id_new = None; current_product = None
+product_variant_id_new = None; ratio_name_new = None; modifier_id_new = None
+
+
 
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -22,10 +25,10 @@ def main_menu(message):
     global name
     
     name = message.text.strip()
-    user_id = message.from_user.id + 3  
+    user_id = message.from_user.id
 
 
-    db.data_in("users", phone = "+73131222813", user_name = name, user_tg_id = user_id)
+    db.data_in("users", phone = "+72238222813", user_name = name, user_tg_id = user_id)
 
 
     markup = types.InlineKeyboardMarkup()
@@ -43,7 +46,7 @@ def main_menu(message):
 @bot.callback_query_handler(func=lambda callback: True)
 def callback_message(callback):
 
-    global current_product
+    global current_product, pickup_point_id_new, product_variant_id_new, ratio_name_new, modifier_id_new
 
     # bot.answer_callback_query(callback.id)
     # chat_id = callback.message.chat.id
@@ -66,6 +69,8 @@ def callback_message(callback):
 
 
     if callback.data == '101':
+        pickup_point_id_new = 101
+
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("САМОВЫВОЗ", callback_data='pickup_len'))
         markup.add(types.InlineKeyboardButton("ДОСТАВКА", callback_data='delivery_len'))
@@ -75,6 +80,8 @@ def callback_message(callback):
 
 
     if callback.data == '102':
+        pickup_point_id_new = 102
+
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("САМОВЫВОЗ", callback_data='pickup_kar'))
         #markup.add(types.InlineKeyboardButton("ДОСТАВКА", callback_data='delivery_kar'))
@@ -88,6 +95,7 @@ def callback_message(callback):
         markup.add(types.InlineKeyboardButton("НАПИТКИ", callback_data='showdrink'))
         markup.add(types.InlineKeyboardButton("ЕДА", callback_data='showfood'))
         markup.add(types.InlineKeyboardButton("ДОПОЛНИТЕЛЬНЫЕ ТОВАРЫ", callback_data='showextra'))
+        markup.add(types.InlineKeyboardButton("КОРЗИНА", callback_data='cart'))
         markup.add(types.InlineKeyboardButton("Назад", callback_data='exit'))
 
         bot.send_message(callback.message.chat.id, "Наше меню", reply_markup=markup)
@@ -105,9 +113,11 @@ def callback_message(callback):
         markup.add(types.InlineKeyboardButton("НАПИТКИ", callback_data='showdrink'))
         markup.add(types.InlineKeyboardButton("ЕДА", callback_data='showfood'))
         markup.add(types.InlineKeyboardButton("ДОПОЛНИТЕЛЬНЫЕ ТОВАРЫ", callback_data='showextra'))
+        markup.add(types.InlineKeyboardButton("КОРЗИНА", callback_data='cart'))
         markup.add(types.InlineKeyboardButton("Назад", callback_data='exit'))
 
         bot.send_message(callback.message.chat.id, "Наше меню", reply_markup=markup)
+
 
     if callback.data == 'showdrink':
         markup = types.InlineKeyboardMarkup()
@@ -158,19 +168,21 @@ def callback_message(callback):
     #     bot.send_message(callback.message.chat.id, "Дополнительные товары", reply_markup=markup)
   
 
-    if callback.data.isdigit() and callback.data != "101" and callback.data != "102":
+    if callback.data.isdigit() and callback.data not in ("101", "102", "1001", "1002", "1003", "1004", "1005", "1006"):
         current_product = callback.data
 
-        products = db.get_callback("products", callback.data, "id")
-        products_variants = db.get_callback("product_variants", callback.data, "product_id")
+        products = db.get_callback("products", current_product, "id")
+        products_variants = db.get_callback("product_variants", current_product, "product_id")
 
         if products and products_variants["variant_name"] != 'onesize':
+
+            products = db.get_callback("products", current_product, "id")
+
             markup = types.InlineKeyboardMarkup()
-            markup.add(types.InlineKeyboardButton("Размер", callback_data='size'))
-            markup.add(types.InlineKeyboardButton("Пропорции", callback_data='ratio'))
-            markup.add(types.InlineKeyboardButton("Модификаторы", callback_data='mod'))
+            markup.add(types.InlineKeyboardButton("Маленький", callback_data='Small'))
+            markup.add(types.InlineKeyboardButton("Большой", callback_data='Big'))
             markup.add(types.InlineKeyboardButton("Назад", callback_data='exit'))
-            
+
             with open(products['photo_path'], 'rb') as file:
                 bot.send_photo(
                     callback.message.chat.id,
@@ -184,60 +196,52 @@ def callback_message(callback):
 
             if products['category'] == "food":
 
-                markup.add(types.InlineKeyboardButton(f"Добавить в корзину", callback_data='add_food' + callback.data))
+                markup.add(types.InlineKeyboardButton(f"Добавить в корзину", callback_data='add_food'))
                 markup.add(types.InlineKeyboardButton("Назад", callback_data='exit'))
+
+                with open(products['photo_path'], 'rb') as file:    
+                    bot.send_photo(
+                        callback.message.chat.id,
+                        file,
+                        caption=products['product_name'] + "\n\n" + products['desc'] + " " + str(products_variants['price']) + "₽",
+                        reply_markup=markup
+                    )
+
             if products['category'] == "drinks":
 
-                markup.add(types.InlineKeyboardButton("Пропорции", callback_data='ratio'))
-                markup.add(types.InlineKeyboardButton("Модификаторы", callback_data='mod'))
-                markup.add(types.InlineKeyboardButton("Назад", callback_data='exit'))
+                products = db.get_callback("products", current_product, "id")
 
-            with open(products['photo_path'], 'rb') as file:    
-                bot.send_photo(
-                    callback.message.chat.id,
-                    file,
-                    caption=products['product_name'] + "\n\n" + products['desc'] + " " + str(products_variants['price']) + "₽",
-                    reply_markup=markup
+                markup = types.InlineKeyboardMarkup()
+                markup.add(types.InlineKeyboardButton("50% на 50%", callback_data='fiftyfifty'))
+
+                markup.row (
+                    types.InlineKeyboardButton("30% на 70%", callback_data='threeseven'),
+                    types.InlineKeyboardButton("70% на 30%", callback_data='seventhree')
                 )
 
-    if callback.data == 'size': 
-        products = db.get_callback("products", current_product, "id")
+                markup.row (
+                    types.InlineKeyboardButton("60% на 40%", callback_data='sixfour'),
+                    types.InlineKeyboardButton("40% на 60%", callback_data='foursix')
+                )
 
-        markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton("Маленький", callback_data='Small'))
-        markup.add(types.InlineKeyboardButton("Большой", callback_data='Big'))
-        markup.add(types.InlineKeyboardButton("Назад", callback_data='exit'))
+                markup.add(types.InlineKeyboardButton("Базовый рецепт", callback_data='base'))
+                markup.add(types.InlineKeyboardButton("Назад", callback_data='exit'))
 
-        with open(products['photo_path'], 'rb') as file:
-            bot.send_photo(
-                callback.message.chat.id,
-                file,
-                caption=products['product_name'] + "\n\n" + products['desc'],
-                reply_markup=markup
-            )
+                with open(products['photo_path'], 'rb') as file:
+                    bot.send_photo(
+                        callback.message.chat.id,
+                        file,
+                        caption=products['product_name'] + "\n\n" + products['desc'],
+                        reply_markup=markup
+                    )   
 
-    if callback.data == 'mod':
-        products = db.get_callback("products", current_product, "id")
+    if callback.data == "Small":
 
-        # бля может отражаться как продукт айдишник
-        markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton("Сироп карамель", callback_data='1'))
-        markup.add(types.InlineKeyboardButton("Сироп ваниль", callback_data='2'))
-        markup.add(types.InlineKeyboardButton("Сироп орех", callback_data='3'))
-        markup.add(types.InlineKeyboardButton("Овсяное молоко", callback_data='4'))
-        markup.add(types.InlineKeyboardButton("Миндальное молоко", callback_data='5'))
-        markup.add(types.InlineKeyboardButton("Кокосовое молоко", callback_data='6'))
-        markup.add(types.InlineKeyboardButton("Назад", callback_data='exit'))
+        product_variant_table = db.get_callback("product_variants", current_product, "product_id", callback.data, "variant_name")
 
-        with open(products['photo_path'], 'rb') as file:
-            bot.send_photo(
-                callback.message.chat.id,
-                file,
-                caption=products['product_name'] + "\n\n" + products['desc'],
-                reply_markup=markup
-            )
 
-    if callback.data == 'ratio':
+        # реализовать передачу в таблицу картс
+
         products = db.get_callback("products", current_product, "id")
 
         markup = types.InlineKeyboardMarkup()
@@ -253,6 +257,7 @@ def callback_message(callback):
             types.InlineKeyboardButton("40% на 60%", callback_data='foursix')
         )
 
+        markup.add(types.InlineKeyboardButton("Базовый рецепт", callback_data='base'))
         markup.add(types.InlineKeyboardButton("Назад", callback_data='exit'))
 
         with open(products['photo_path'], 'rb') as file:
@@ -263,14 +268,138 @@ def callback_message(callback):
                 reply_markup=markup
             )
 
+    if callback.data == "Big":
+
+        product_variant_table = db.get_callback("product_variants", current_product, "product_id", callback.data, "variant_name")
+
+        products = db.get_callback("products", current_product, "id")
+
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("50% на 50%", callback_data='fiftyfifty'))
+
+        markup.row (
+            types.InlineKeyboardButton("30% на 70%", callback_data='threeseven'),
+            types.InlineKeyboardButton("70% на 30%", callback_data='seventhree')
+        )
+
+        markup.row (
+            types.InlineKeyboardButton("60% на 40%", callback_data='sixfour'),
+            types.InlineKeyboardButton("40% на 60%", callback_data='foursix')
+        )
+        
+        markup.add(types.InlineKeyboardButton("Базовый рецепт", callback_data='base'))
+        markup.add(types.InlineKeyboardButton("Назад", callback_data='exit'))
+
+        with open(products['photo_path'], 'rb') as file:
+            bot.send_photo(
+                callback.message.chat.id,
+                file,
+                caption=products['product_name'] + "\n\n" + products['desc'],
+                reply_markup=markup
+            )
+
+    if callback.data == 'fiftyfifty' or callback.data == 'threeseven' or callback.data == 'seventhree' \
+    or callback.data == 'sixfour' or callback.data == 'foursix' or callback.data == "base":
+        
+        ratio_name_new = callback.data
+
+        products = db.get_callback("products", current_product, "id")
+
+        # бля может отражаться как продукт айдишник
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("Сироп карамель", callback_data='1001'))
+        markup.add(types.InlineKeyboardButton("Сироп ваниль", callback_data='1002'))
+        markup.add(types.InlineKeyboardButton("Сироп орех", callback_data='1003'))
+        markup.add(types.InlineKeyboardButton("Овсяное молоко", callback_data='1004'))
+        markup.add(types.InlineKeyboardButton("Миндальное молоко", callback_data='1005'))
+        markup.add(types.InlineKeyboardButton("Кокосовое молоко", callback_data='1006'))
+        markup.add(types.InlineKeyboardButton("Без добавок", callback_data='outdop'))
+        markup.add(types.InlineKeyboardButton("Назад", callback_data='exit'))
+
+        with open(products['photo_path'], 'rb') as file:
+            bot.send_photo(
+                callback.message.chat.id,
+                file,
+                caption=products['product_name'] + "\n\n" + products['desc'],
+                reply_markup=markup
+            )
+        
+
+    if callback.data == '1001' or callback.data == '1002' or callback.data == '1003' or callback.data == '1004' \
+    or callback.data == '1005' or callback.data == '1006' or callback.data == '1007':
+        
+        modifier_id_new = callback.data
+
+        products = db.get_callback("products", current_product, "id")  
+        products_variants = db.get_callback("product_variants", current_product, "product_id")    
+
+        markup = types.InlineKeyboardMarkup()
+
+        markup.add(types.InlineKeyboardButton(f"Добавить в корзину", callback_data='add_food'))
+        markup.add(types.InlineKeyboardButton("Назад", callback_data='exit'))
+
+        with open(products['photo_path'], 'rb') as file:    
+            bot.send_photo(
+                callback.message.chat.id,
+                file,
+                # допилить чтобы продакт вэриантс работал при выборе большой или маленький доп фильтр так он просто первый берет
+                caption=products['product_name'] + "\n\n" + products['desc'] + " " + str(products_variants['price']) + "₽",
+                reply_markup=markup
+            )     
 
 
     if callback.data == 'add_food':
-        pass 
+
+        products = db.get_callback("products", current_product, "id")
+        products_variants = db.get_callback("product_variants", current_product, "product_id")
+        
+        cart_table_id = db.data_in("carts", customer_id = callback.from_user.id, pickup_point_id = pickup_point_id_new)
+        cart_items = db.data_in("cart_items", cart_id = cart_table_id, product_variant_id = product_variant_table['product_id'], quantity = 1, item_price = product_variant_table['price'], ratio_name = ratio_name_new)
+        cart_item_modifiers = db.data_in("cart_item_modifiers", cart_item_id = cart_items, modifier_id = modifier_id_new)
+
+        cart_table_id_back = db.get_callback("carts", callback.from_user.id, "customer_id")
+        cart_items_back = db.get_callback("cart_items", cart_items, "cart_id")
+        cart_items_modifiers_back = db.get_callback("cart_item_modifiers", cart_item_modifiers, "modifier_id")
+
+
+        bot.send_message(
+            callback.message.chat.id,
+            f"✅ {products['product_name']}\n" +
+            f"ID: {cart_items_back['product_variant_id']}\n" +
+            f"Кол-во: {cart_items_back['quantity']}\n" +
+            f"Модефаер айди: {cart_items_modifiers_back['modifier_id']}\n" +
+            f"Карт айтем айди: {cart_items_modifiers_back['cart_item_id']}\n" +
+            f"Название соотношений: {cart_items_back['ratio_name']}\n" +
+            f"Ваш айди: {cart_table_id_back['customer_id']}\n" +
+            f"Айди корзины: {cart_table_id_back['id']}\n" +
+            f"Айди корзины из таблицы картс: {cart_items_back['cart_id']}\n" +
+            f"Точка забора: {cart_table_id_back['pickup_point_id']}\n" +
+            f"Цена: {cart_items_back['item_price']}₽"
+        )
+
+    if callback.data == 'cart':
+        pass
+
+    if callback.data == 'order':
+        pass
 
 
     #if callback.data == 'exit':
         #bot.register_next_step_handler(message, user_name)
+
+            # markup = types.InlineKeyboardMarkup()
+            # markup.add(types.InlineKeyboardButton("Пропорции", callback_data='ratio'))
+            # markup.add(types.InlineKeyboardButton("Модификаторы", callback_data='mod'))
+            # markup.add(types.InlineKeyboardButton("Назад", callback_data='exit'))
+            
+            # with open(products['photo_path'], 'rb') as file:
+            #     bot.send_photo(
+            #         callback.message.chat.id,
+            #         file,
+            #         caption=products['product_name'] + "\n\n" + products['desc'],
+            #         reply_markup=markup
+            #     )
+
 
 
 
