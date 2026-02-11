@@ -23,7 +23,9 @@ def create_tables():
     CREATE TABLE IF NOT EXISTS products (
         id INTEGER PRIMARY KEY,
         product_name TEXT NOT NULL,
-        category TEXT NOT NULL
+        category TEXT NOT NULL,
+        photo_path TEXT NOT NULL,
+        desc TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS product_variants (
@@ -104,28 +106,35 @@ def products_in():
     cur = conn.cursor()
 
     cur.executescript("""
-        INSERT INTO products (id, product_name, category) 
-        VALUES (1, 'Американо', 'drinks'), (2, 'Эспрессо', 'drinks'), (3, 'Фильтр-кофе', 'drinks'), (4, 'Капучино', 'drinks'), (5, 'Латте', 'drinks'), (6, 'Флэт Уайт', 'drinks'), (7, 'Раф', 'drinks'), (8, 'Матча', 'drinks'), (9, 'Какао', 'drinks'),
-        (10, 'Бабка с шоколадом и вишней', 'food'), (11, 'Сэндвич с мясом', 'food'), (12, 'Краффин с соленой карамелью', 'food'), (13, 'Канеле', 'food'), (14, 'Ржаной даниш с брынзой', 'food'), (15, 'Круассан с сыром', 'food'), (16, 'Пан шоколя', 'food'); 
+        INSERT OR IGNORE INTO products (id, product_name, category, photo_path, desc) 
+        VALUES 
+        (1, 'Американо', 'drinks', './photo.jpg', 'Классический чёрный кофе'), (2, 'Эспрессо', 'drinks', './photo.jpg', 'Насыщенный вкус'), 
+        (3, 'Фильтр-кофе', 'drinks', './photo.jpg', 'Классический фильтр'), (4, 'Капучино', 'drinks', './photo.jpg', 'С молочной пеной'), 
+        (5, 'Латте', 'drinks', './photo.jpg', 'Нежный и сливочный'), (6, 'Флэт Уайт', 'drinks', './photo.jpg', 'Микровспенка молока'), 
+        (7, 'Раф', 'drinks', './photo.jpg', 'Эспрессо с сливками'), (8, 'Матча', 'drinks', './photo.jpg', 'Зелёный чай'), 
+        (9, 'Какао', 'drinks', './photo.jpg', 'Горячее какао'),(10, 'Бабка с шоколадом и вишней', 'food', './photo2.jpg', 'Сладкая выпечка с шоколадом и вишней'), 
+        (11, 'Сэндвич с мясом', 'food', './photo2.jpg', 'Сытный мясной сэндвич'), (12, 'Краффин с соленой карамелью', 'food', './photo2.jpg', 'Хрустящий краффин с карамелью'), 
+        (13, 'Канеле', 'food', './photo2.jpg', 'Французская выпечка с ромом'), (14, 'Ржаной даниш с брынзой', 'food', './photo2.jpg', 'Даниш с ржаной мукой и сыром'), 
+        (15, 'Круассан с сыром', 'food', './photo2.jpg', 'Классический круассан с плавленым сыром'), (16, 'Пан шоколя', 'food', './photo2.jpg', 'Мягкая булочка с шоколадом'); 
 
-        INSERT INTO place (place_id, place_name, address)
-        VALUES (1, 'ЛЕНПОЛИГРАФМАШ', 'Санкт-Петербург, Аптекарский просп., 2'), (2, 'У КАРАНДАША', 'Санкт-Петербург, Большой Сампсониевский просп., 76');
+        INSERT OR IGNORE INTO place (place_id, place_name, address)
+        VALUES (101, 'ЛЕНПОЛИГРАФМАШ', 'Санкт-Петербург, Аптекарский просп., 2'), (102, 'У КАРАНДАША', 'Санкт-Петербург, Большой Сампсониевский просп., 76');
 
-        INSERT INTO modifiers (id, name, price)
+        INSERT OR IGNORE INTO modifiers (id, name, price)
         VALUES (1, 'Сироп карамель', 20), (2, 'Сироп ваниль', 30), (3, 'Сироп орех', 50), (4, 'Овсяное молоко', 50), (5, 'Миндальное молоко', 20), (6, 'Кокосовое молоко', 31);
                       
-        INSERT INTO product_variants (id, product_id, variant_name, price)
+        INSERT OR IGNORE INTO product_variants (id, product_id, variant_name, price)
         VALUES 
             -- drinks
             (1, 1, 'Small', 180), (2, 1, 'Big', 220), -- американо
-            (3, 2, 'Small', 150), -- эспрессо
+            (3, 2, 'onesize', 150), -- эспрессо
             (4, 3, 'Small', 180), (5, 3, 'Big', 220), -- фильтр кофе
             (6, 4, 'Small', 220), (7, 4, 'Big', 280), -- капучино
             (8, 5, 'Small', 210), (9, 5, 'Big', 260), -- латте
-            (10, 6, 'Small', 240), -- флэт вайт 
+            (10, 6, 'onesize', 240), -- флэт вайт 
             (11, 7, 'Small', 250), (12, 7, 'Big', 310), -- Раф
             (13, 8, 'Small', 240), (14, 8, 'Big', 280), -- Матча
-            (15, 9, 'Small', 300),  -- Какао
+            (15, 9, 'onesize', 300),  -- Какао
                       
             -- food
             (16, 10, 'onesize', 270), -- Бабка           
@@ -142,3 +151,42 @@ def products_in():
 
     conn.commit()
     conn.close()
+
+
+def data_in(table_name, **data):
+    conn = sqlite3.connect("userfile.db")
+    conn.execute("PRAGMA foreign_keys = ON")
+    cur = conn.cursor()
+    
+    columns = list(data.keys())
+    values = list(data.values())
+    placeholders = ','.join('?' * len(values))
+    query = f"INSERT INTO {table_name} ({','.join(columns)}) VALUES ({placeholders})"
+    
+    cur.execute(query, values)
+
+    conn.commit()
+    last_id = cur.lastrowid
+    conn.close()
+
+    return last_id
+
+
+def get_callback(table_name, back, id_name, **data):
+    conn = sqlite3.connect("userfile.db")
+    conn.row_factory = sqlite3.Row 
+    
+    if data: 
+        columns = list(data.keys())
+        query = f"SELECT {','.join(columns)} FROM {table_name} WHERE {id_name} = ?"
+    else:   
+        query = f"SELECT * FROM {table_name} WHERE {id_name} = ?"
+    
+    cur = conn.cursor()
+    cur.execute(query, (back,))
+    row = cur.fetchone()
+    conn.close()
+    
+    return dict(row) if row else None
+
+
