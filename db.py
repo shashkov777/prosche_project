@@ -110,7 +110,7 @@ def products_in():
     cur.executescript("""
         INSERT OR IGNORE INTO products (id, product_name, category, photo_path, desc) 
         VALUES 
-        (1, 'Американо', 'drinks', './photo.jpg', 'Классический чёрный кофе'), (2, 'Эспрессо', 'drinks', './photo.jpg', 'Насыщенный вкус'), 
+        (1, 'Американо', 'drinks', './photo2.jpg', 'Классический чёрный кофе'), (2, 'Эспрессо', 'drinks', './photo.jpg', 'Насыщенный вкус'), 
         (3, 'Фильтр-кофе', 'drinks', './photo.jpg', 'Классический фильтр'), (4, 'Капучино', 'drinks', './photo.jpg', 'С молочной пеной'), 
         (5, 'Латте', 'drinks', './photo.jpg', 'Нежный и сливочный'), (6, 'Флэт Уайт', 'drinks', './photo.jpg', 'Микровспенка молока'), 
         (7, 'Раф', 'drinks', './photo.jpg', 'Эспрессо с сливками'), (8, 'Матча', 'drinks', './photo.jpg', 'Зелёный чай'), 

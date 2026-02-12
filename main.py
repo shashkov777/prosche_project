@@ -6,8 +6,8 @@ from telebot import types
 
 bot = telebot.TeleBot("8573939809:AAE-sW3ZzmUVpCPX-axSO6ryeoyQFWkXaEM")
 
-name = None; pickup_point_id_new = None; current_product = None
-product_variant_id_new = None; ratio_name_new = None; modifier_id_new = None
+name = None; pickup_point_id_new = None; 
+ratio_name_new = None; modifier_id_new = None
 
 
 
@@ -46,7 +46,7 @@ def main_menu(message):
 @bot.callback_query_handler(func=lambda callback: True)
 def callback_message(callback):
 
-    global current_product, pickup_point_id_new, product_variant_id_new, ratio_name_new, modifier_id_new
+    global current_product, pickup_point_id_new, ratio_name_new, modifier_id_new, product_variant_table
 
     # bot.answer_callback_query(callback.id)
     # chat_id = callback.message.chat.id
@@ -192,9 +192,14 @@ def callback_message(callback):
                 )
 
         if products and products_variants["variant_name"] == 'onesize':
+            global product_variant_table
+            product_variant_table = products_variants
+
             markup = types.InlineKeyboardMarkup()
 
             if products['category'] == "food":
+                ratio_name_new = "not"
+                modifier_id_new = "1007"
 
                 markup.add(types.InlineKeyboardButton(f"Добавить в корзину", callback_data='add_food'))
                 markup.add(types.InlineKeyboardButton("Назад", callback_data='exit'))
@@ -357,9 +362,9 @@ def callback_message(callback):
         cart_items = db.data_in("cart_items", cart_id = cart_table_id, product_variant_id = product_variant_table['product_id'], quantity = 1, item_price = product_variant_table['price'], ratio_name = ratio_name_new)
         cart_item_modifiers = db.data_in("cart_item_modifiers", cart_item_id = cart_items, modifier_id = modifier_id_new)
 
-        cart_table_id_back = db.get_callback("carts", callback.from_user.id, "customer_id")
-        cart_items_back = db.get_callback("cart_items", cart_items, "cart_id")
-        cart_items_modifiers_back = db.get_callback("cart_item_modifiers", cart_item_modifiers, "modifier_id")
+        cart_table_id_back = db.get_callback("carts", cart_table_id, "id") # кажется нужно доставть по айди 
+        cart_items_back = db.get_callback("cart_items", cart_items, "id") # доставать по id
+        cart_items_modifiers_back = db.get_callback("cart_item_modifiers", cart_item_modifiers, "cart_item_id") # cart_item_id этот столбец
 
 
         bot.send_message(
@@ -399,7 +404,6 @@ def callback_message(callback):
             #         caption=products['product_name'] + "\n\n" + products['desc'],
             #         reply_markup=markup
             #     )
-
 
 
 
