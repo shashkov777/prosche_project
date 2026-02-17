@@ -1,7 +1,8 @@
 import telebot
 import db 
 from telebot import types 
-
+from yookassa import Configuration, Payment
+import uuid
 
 
 bot = telebot.TeleBot("8573939809:AAE-sW3ZzmUVpCPX-axSO6ryeoyQFWkXaEM")
@@ -46,7 +47,7 @@ def main_menu(message):
 @bot.callback_query_handler(func=lambda callback: True)
 def callback_message(callback):
 
-    global current_product, pickup_point_id_new, ratio_name_new, modifier_id_new, product_variant_table
+    global current_product, pickup_point_id_new, ratio_name_new, modifier_id_new, product_variant_table, cart_table_id 
 
     # bot.answer_callback_query(callback.id)
     # chat_id = callback.message.chat.id
@@ -71,6 +72,8 @@ def callback_message(callback):
     if callback.data == '101':
         pickup_point_id_new = 101
 
+        cart_table_id = db.data_in("carts", customer_id = callback.from_user.id, pickup_point_id = pickup_point_id_new)
+
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("САМОВЫВОЗ", callback_data='pickup_len'))
         markup.add(types.InlineKeyboardButton("ДОСТАВКА", callback_data='delivery_len'))
@@ -81,6 +84,8 @@ def callback_message(callback):
 
     if callback.data == '102':
         pickup_point_id_new = 102
+
+        cart_table_id = db.data_in("carts", customer_id = callback.from_user.id, pickup_point_id = pickup_point_id_new)
 
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("САМОВЫВОЗ", callback_data='pickup_kar'))
@@ -151,21 +156,16 @@ def callback_message(callback):
         bot.send_message(callback.message.chat.id, "Еда", reply_markup=markup)
 
 
-    # if callback.data == 'showextra':
+    if callback.data == 'showextra':
 
-    #     markup = types.InlineKeyboardMarkup()
+        markup = types.InlineKeyboardMarkup()
 
-    #     markup.add(types.InlineKeyboardButton("Американо", callback_data='a'))
-    #     markup.add(types.InlineKeyboardButton("Эспрессо", callback_data='espresso'))
-    #     markup.add(types.InlineKeyboardButton("Фильтр-кофе", callback_data='filter_coffee'))
-    #     markup.add(types.InlineKeyboardButton("Капучино", callback_data='cappuccino'))
-    #     markup.add(types.InlineKeyboardButton("Латте", callback_data='latte'))
-    #     markup.add(types.InlineKeyboardButton("Флэт Уайт", callback_data='flat_white'))
-    #     markup.add(types.InlineKeyboardButton("Раф", callback_data='raf_coffee'))
-    #     markup.add(types.InlineKeyboardButton("Матча", callback_data='matcha'))
-    #     markup.add(types.InlineKeyboardButton("Какао", callback_data='cocoa'))
-    #     markup.add(types.InlineKeyboardButton("Назад", callback_data='exit'))
-    #     bot.send_message(callback.message.chat.id, "Дополнительные товары", reply_markup=markup)
+        markup.add(types.InlineKeyboardButton("Проще не бывает! термокружка", callback_data='17'))
+        markup.add(types.InlineKeyboardButton("Матча-зона футболка", callback_data='18'))
+        markup.add(types.InlineKeyboardButton("Coffee Starter Kit", callback_data='19'))
+        markup.add(types.InlineKeyboardButton("Персональная подставка", callback_data='20'))
+        markup.add(types.InlineKeyboardButton("Назад", callback_data='exit'))
+        bot.send_message(callback.message.chat.id, "Дополнительные товары", reply_markup=markup)
   
 
     if callback.data.isdigit() and callback.data not in ("101", "102", "1001", "1002", "1003", "1004", "1005", "1006"):
@@ -197,7 +197,7 @@ def callback_message(callback):
 
             markup = types.InlineKeyboardMarkup()
 
-            if products['category'] == "food":
+            if products['category'] == "food" or products['category'] == "merch":
                 ratio_name_new = "not"
                 modifier_id_new = "1007"
 
@@ -243,9 +243,6 @@ def callback_message(callback):
     if callback.data == "Small":
 
         product_variant_table = db.get_callback("product_variants", current_product, "product_id", callback.data, "variant_name")
-
-
-        # реализовать передачу в таблицу картс
 
         products = db.get_callback("products", current_product, "id")
 
@@ -318,7 +315,7 @@ def callback_message(callback):
         markup.add(types.InlineKeyboardButton("Овсяное молоко", callback_data='1004'))
         markup.add(types.InlineKeyboardButton("Миндальное молоко", callback_data='1005'))
         markup.add(types.InlineKeyboardButton("Кокосовое молоко", callback_data='1006'))
-        markup.add(types.InlineKeyboardButton("Без добавок", callback_data='outdop'))
+        markup.add(types.InlineKeyboardButton("Без добавок", callback_data='1007'))
         markup.add(types.InlineKeyboardButton("Назад", callback_data='exit'))
 
         with open(products['photo_path'], 'rb') as file:
@@ -358,13 +355,13 @@ def callback_message(callback):
         products = db.get_callback("products", current_product, "id")
         products_variants = db.get_callback("product_variants", current_product, "product_id")
         
-        cart_table_id = db.data_in("carts", customer_id = callback.from_user.id, pickup_point_id = pickup_point_id_new)
+        
         cart_items = db.data_in("cart_items", cart_id = cart_table_id, product_variant_id = product_variant_table['product_id'], quantity = 1, item_price = product_variant_table['price'], ratio_name = ratio_name_new)
         cart_item_modifiers = db.data_in("cart_item_modifiers", cart_item_id = cart_items, modifier_id = modifier_id_new)
 
-        cart_table_id_back = db.get_callback("carts", cart_table_id, "id") # кажется нужно доставть по айди 
-        cart_items_back = db.get_callback("cart_items", cart_items, "id") # доставать по id
-        cart_items_modifiers_back = db.get_callback("cart_item_modifiers", cart_item_modifiers, "cart_item_id") # cart_item_id этот столбец
+        cart_table_id_back = db.get_callback("carts", cart_table_id, "id")  
+        cart_items_back = db.get_callback("cart_items", cart_items, "id") 
+        cart_items_modifiers_back = db.get_callback("cart_item_modifiers", cart_item_modifiers, "cart_item_id") 
 
 
         bot.send_message(
@@ -383,9 +380,81 @@ def callback_message(callback):
         )
 
     if callback.data == 'cart':
-        pass
+
+        cart_table_id_back = db.get_callback_last1("carts", callback.from_user.id, "customer_id")
+        cart_items_back = db.get_callback_last2("cart_items", cart_table_id_back['id'], "cart_id") 
+        
+        
+        markup = types.InlineKeyboardMarkup()  
+        bot.send_message(callback.message.chat.id, "Ваша корзина:")
+
+        for number in range(0, len(cart_items_back)):
+            items = cart_items_back[number]
+
+            cart_items_modifiers_back = db.get_callback("cart_item_modifiers", items['id'], "cart_item_id")
+        
+            item_markup = types.InlineKeyboardMarkup()
+            item_markup.add(types.InlineKeyboardButton("Изменить количество", callback_data=f'edit_{items["id"]}'))
+            item_markup.add(types.InlineKeyboardButton("Удалить", callback_data=f'delete_{items["id"]}'))
+
+            bot.send_message(
+                callback.message.chat.id,
+                f"Cart_item_id: {cart_items_modifiers_back['cart_item_id']}\n" +
+                f"Modefier_id: {cart_items_modifiers_back['modifier_id']}\n" +
+                f"ID: {items['cart_id']}\n" +
+                f"Product ID: {items['product_variant_id']}\n" +
+                f"Кол-во: {items['quantity']}\n" +
+                f"Название соотношений: {items['ratio_name']}\n" +
+                f"Цена: {items['item_price']}₽",
+                reply_markup=item_markup  
+            )
+
+        markup.add(types.InlineKeyboardButton("Оформить заказ", callback_data='order'))
+        markup.add(types.InlineKeyboardButton("Очистить корзину", callback_data='clear'))
+        bot.send_message(callback.message.chat.id, "Действия с корзиной:", reply_markup=markup)
+
 
     if callback.data == 'order':
+
+        Configuration.account_id = 'ТВОЙ_SHOP_ID'  
+        Configuration.secret_key = 'test_ТВОЙ_КЛЮЧ'
+
+        idempotence_key = str(uuid.uuid4())
+        payment = Payment.create({
+            "amount": {
+                "value": "2.00", 
+                "currency": "RUB"
+            },
+            "confirmation": {
+                "type": "redirect",
+                "return_url": "https://t.me/proshecoffee_bot"
+            },
+            "capture": True, # деньги сразу на счет False - в юкасса застревают
+            "description": "Заказ №72"
+        }, idempotence_key)
+
+        confirmation_url = payment.confirmation.confirmation_url
+
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("Оплатить", url=confirmation_url))
+        markup.add(types.InlineKeyboardButton("Отмена", callback_data='cart'))
+        bot.send_message(callback.message.chat.id, f"Оплатить?", reply_markup=markup)
+
+
+        payment_id = payment.id
+        payment = Payment.find_one(payment_id)
+
+        if payment["status"] == "succeeded":
+            pass
+        if payment["status"] == "canceled":
+            pass
+        if payment["status"] == "pending":
+            pass
+        if payment["status"] == "waiting_for_capture":
+            pass
+
+
+    if callback.data == 'clear':
         pass
 
 

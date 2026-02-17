@@ -117,7 +117,9 @@ def products_in():
         (9, 'Какао', 'drinks', './photo.jpg', 'Горячее какао'),(10, 'Бабка с шоколадом и вишней', 'food', './photo2.jpg', 'Сладкая выпечка с шоколадом и вишней'), 
         (11, 'Сэндвич с мясом', 'food', './photo2.jpg', 'Сытный мясной сэндвич'), (12, 'Краффин с соленой карамелью', 'food', './photo2.jpg', 'Хрустящий краффин с карамелью'), 
         (13, 'Канеле', 'food', './photo2.jpg', 'Французская выпечка с ромом'), (14, 'Ржаной даниш с брынзой', 'food', './photo2.jpg', 'Даниш с ржаной мукой и сыром'), 
-        (15, 'Круассан с сыром', 'food', './photo2.jpg', 'Классический круассан с плавленым сыром'), (16, 'Пан шоколя', 'food', './photo2.jpg', 'Мягкая булочка с шоколадом'); 
+        (15, 'Круассан с сыром', 'food', './photo2.jpg', 'Классический круассан с плавленым сыром'), (16, 'Пан шоколя', 'food', './photo2.jpg', 'Мягкая булочка с шоколадом'), 
+        (17, 'Проще не бывает! термокружка', 'merch', './photo2.jpg', 'Термокружка 350мл'), (18, 'Матча-зона футболка', 'merch', './photo2.jpg', 'Футболка М-XL'), 
+        (19, 'Coffee Starter Kit', 'merch', './photo2.jpg', 'Стартовый набор любителей кофе'), (20, 'Персональная подставка', 'merch', './photo2.jpg', 'Подставка имя'); 
 
         INSERT OR IGNORE INTO place (place_id, place_name, address)
         VALUES (101, 'ЛЕНПОЛИГРАФМАШ', 'Санкт-Петербург, Аптекарский просп., 2'), (102, 'У КАРАНДАША', 'Санкт-Петербург, Большой Сампсониевский просп., 76');
@@ -145,8 +147,13 @@ def products_in():
             (19, 13, 'onesize', 150), -- Канеле       
             (20, 14, 'onesize', 250), -- Даниш
             (21, 15, 'onesize', 250), -- круасан с сыром
-            -- Пан шоколя
-            (22, 16, 'onesize', 250);
+            (22, 16, 'onesize', 250), -- Пан шоколя
+            
+            --merch
+            (23, 17, 'onesize', 500), -- термокружка      
+            (24, 18, 'onesize', 700), -- футболка
+            (25, 19, 'onesize', 300), -- набор
+            (26, 20, 'onesize', 250); -- подставка            
                       
 """)
 
@@ -199,3 +206,44 @@ def get_callback(table_name, back, id_name, extra_back=None, extra_id_name=None,
     return dict(row) if row else None
 
 
+def get_callback_last1(table_name, back, id_name, extra_back=None, extra_id_name=None, **data):
+    conn = sqlite3.connect("userfile.db")
+    conn.row_factory = sqlite3.Row 
+
+    cur = conn.cursor()
+
+    if data: 
+        columns = list(data.keys())
+        query = f"SELECT {','.join(columns)} FROM {table_name} WHERE {id_name} = ? ORDER BY id DESC LIMIT 1"
+        cur.execute(query, (back,))
+    else: 
+        if extra_back is not None and extra_id_name is not None:
+            query = f"SELECT * FROM {table_name} WHERE {id_name} = ? AND {extra_id_name} = ? ORDER BY id DESC LIMIT 1"
+            cur.execute(query, (back, extra_back,))
+        else: 
+            query = f"SELECT * FROM {table_name} WHERE {id_name} = ? ORDER BY id DESC LIMIT 1"
+            cur.execute(query, (back,))
+
+    
+    row = cur.fetchone()
+    conn.close()
+    
+    return dict(row) if row else None
+
+
+def get_callback_last2(table_name, back, id_name, **data):
+    conn = sqlite3.connect("userfile.db")
+    conn.row_factory = sqlite3.Row 
+    cur = conn.cursor()
+
+    if data: 
+        columns = list(data.keys())
+        query = f"SELECT {','.join(columns)} FROM {table_name} WHERE {id_name} = ? ORDER BY id DESC"
+    else: 
+        query = f"SELECT * FROM {table_name} WHERE {id_name} = ? ORDER BY id DESC"
+    
+    cur.execute(query, (back,))
+    rows = cur.fetchall()
+    conn.close()
+    
+    return [dict(row) for row in rows]
